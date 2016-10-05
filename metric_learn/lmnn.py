@@ -40,27 +40,34 @@ class python_LMNN(_base_LMNN):
                         learn_rate=learn_rate, regularization=regularization,
                         convergence_tol=convergence_tol, verbose=verbose)
 
-  def _process_inputs(self, X, labels):
+  def _process_inputs(self, X, labels, incremental=False):
     num_pts = X.shape[0]
     assert len(labels) == num_pts
     unique_labels, self.label_inds = np.unique(labels, return_inverse=True)
     self.labels = np.arange(len(unique_labels))
     self.X = X
-    self.L = np.eye(X.shape[1])
+
+    # if incremental and self.L already exists, then no need to do anything
+    if(incremental and (self.L is None)):
+      self.L = np.eye(X.shape[1])
+    elif(not incremental):
+      self.L = np.eye(X.shape[1])
+
     required_k = np.bincount(self.label_inds).min()
     assert self.params['k'] <= required_k, (
         'not enough class labels for specified k'
         ' (smallest class has %d)' % required_k)
 
-  def fit(self, X, labels):
+  def fit(self, X, labels, incremental=False):
     k = self.params['k']
     verbose = self.params['verbose']
     reg = self.params['regularization']
     learn_rate = self.params['learn_rate']
     convergence_tol = self.params['convergence_tol']
     min_iter = self.params['min_iter']
-    self._process_inputs(X, labels)
-
+    
+    self._process_inputs(X, labels, incremental)
+    
     target_neighbors = self._select_targets()
     impostors = self._find_impostors(target_neighbors[:,-1])
     if len(impostors) == 0:
